@@ -1,0 +1,111 @@
+diff --git a/curobo/_src/curobolib/backends/__init__.py b/curobo/_src/curobolib/backends/__init__.py
+index d64eaba..7793281 100644
+--- a/curobo/_src/curobolib/backends/__init__.py
++++ b/curobo/_src/curobolib/backends/__init__.py
+@@ -59,7 +59,7 @@ def _try_load_cuda_core_backend() -> Optional[dict]:
+         }
+     except ImportError as e:
+         # cuda.core not available
+-        log_and_raise(f"Error loading cuda.core backend: {e}")
++        log_warn(f"Error loading cuda.core backend: {e}")
+         return None
+ 
+ 
+diff --git a/curobo/_src/geom/data/data_mesh.py b/curobo/_src/geom/data/data_mesh.py
+index 8444daf..06d57b2 100644
+--- a/curobo/_src/geom/data/data_mesh.py
++++ b/curobo/_src/geom/data/data_mesh.py
+@@ -133,7 +133,7 @@ class MeshData:
+         """Initialize Warp device after dataclass creation."""
+         if self._wp_device is None:
+             object.__setattr__(
+-                self, "_wp_device", wp.torch.device_from_torch(self.device_cfg.device)
++                self, "_wp_device", wp.device_from_torch(self.device_cfg.device)
+             )
+ 
+     # -------------------------------------------------------------------------
+@@ -626,7 +626,7 @@ def compute_local_sdf(
+     bounding_box_size = wp.vec3(obs_set.dims[flat_idx,0],
+     obs_set.dims[flat_idx,1],
+     obs_set.dims[flat_idx,2])
+-    max_distance = wp.length(bounding_box_size) * 0.5
++    max_distance = wp.max(wp.length(bounding_box_size) * 0.5, obs_set.max_dist)
+ 
+     # Query mesh for closest point
+     result = wp.mesh_query_point(mesh_id, local_pt, max_distance)
+@@ -673,7 +673,7 @@ def compute_local_sdf_with_grad(
+     bounding_box_size = wp.vec3(obs_set.dims[flat_idx,0],
+     obs_set.dims[flat_idx,1],
+     obs_set.dims[flat_idx,2])
+-    max_distance = wp.length(bounding_box_size) * 0.5
++    max_distance = wp.max(wp.length(bounding_box_size) * 0.5, obs_set.max_dist)
+ 
+     # Query mesh for closest point
+     result = wp.mesh_query_point(mesh_id, local_pt, max_distance)
+diff --git a/curobo/_src/perception/mapper/mesh_extractor.py b/curobo/_src/perception/mapper/mesh_extractor.py
+index d3fa619..c0c1c8d 100644
+--- a/curobo/_src/perception/mapper/mesh_extractor.py
++++ b/curobo/_src/perception/mapper/mesh_extractor.py
+@@ -874,7 +874,7 @@ def extract_mesh_block_sparse(
+             minimum_tsdf_weight,
+             wp.from_torch(surface_count, dtype=wp.int32),
+         ],
+-        device=wp.torch.device_from_torch(device),
++        device=wp.device_from_torch(device),
+         stream=stream,
+         adjoint=False,
+     )
+@@ -904,7 +904,7 @@ def extract_mesh_block_sparse(
+             wp.from_torch(surface_block_idx, dtype=wp.int32),
+             wp.from_torch(surface_cube_idx, dtype=wp.int32),
+         ],
+-        device=wp.torch.device_from_torch(device),
++        device=wp.device_from_torch(device),
+         stream=stream,
+     )
+ 
+@@ -925,7 +925,7 @@ def extract_mesh_block_sparse(
+             n_surfaces,
+             wp.from_torch(edge_counts, dtype=wp.int32),
+         ],
+-        device=wp.torch.device_from_torch(device),
++        device=wp.device_from_torch(device),
+         stream=stream,
+     )
+ 
+@@ -965,7 +965,7 @@ def extract_mesh_block_sparse(
+             wp.from_torch(normals, dtype=wp.vec3),
+             wp.from_torch(edge_vertex_indices, dtype=wp.int32),
+         ],
+-        device=wp.torch.device_from_torch(device),
++        device=wp.device_from_torch(device),
+         stream=stream,
+     )
+ 
+@@ -995,7 +995,7 @@ def extract_mesh_block_sparse(
+             mc_tables.num_tris_table,
+             wp.from_torch(tri_counts, dtype=wp.int32),
+         ],
+-        device=wp.torch.device_from_torch(device),
++        device=wp.device_from_torch(device),
+         stream=stream,
+     )
+ 
+@@ -1033,7 +1033,7 @@ def extract_mesh_block_sparse(
+             wp.from_torch(edge_vertex_indices, dtype=wp.int32),
+             wp.from_torch(triangles.view(-1), dtype=wp.int32),
+         ],
+-        device=wp.torch.device_from_torch(device),
++        device=wp.device_from_torch(device),
+         stream=stream,
+     )
+ 
+@@ -1063,7 +1063,7 @@ def extract_mesh_block_sparse(
+             warp_data,
+             wp.from_torch(colors, dtype=wp.vec3ub),
+         ],
+-        device=wp.torch.device_from_torch(device),
++        device=wp.device_from_torch(device),
+         stream=stream,
+     )
+ 

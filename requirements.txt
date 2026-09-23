@@ -1,0 +1,17 @@
+# Python 3.10. Versions are the ones the paper's experiments ran with.
+numpy==1.26.4
+scipy==1.15.3
+opencv-python
+matplotlib==3.10.8
+pillow==11.3.0
+PyYAML==6.0.3
+pyzmq==27.1.0
+requests==2.34.2
+trimesh==4.12.2
+open3d==0.17.0
+pyrender==0.1.45
+scikit-learn==1.7.2
+torch==2.12.0
+botorch==0.16.1
+ax-platform==1.2.1
+google-genai==2.10.0

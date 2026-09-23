@@ -1,0 +1,22 @@
+# ============================================================
+# Grasp-point localization prompt (Gemini Robotics ER)
+# ============================================================
+# Points to the grasp target on each rendered view. The 2D points
+# are back-projected to a 3D grasp point downstream.
+#   - object_description: the specific part to grasp; overridden at
+#     runtime with the phrase from the grasp-target-part stage.
+#   - scale: Gemini's 0-<scale> normalized coordinate range (y-first).
+
+task:
+  # object_description is overridden at runtime by the grasp-target-part stage
+  object_description: "target object"
+
+coordinates:
+  scale: 1000
+
+prompt_template: |
+  Point to the {object_description} in this image.
+  The point must be directly on the surface of the object, not in empty space or background.
+
+  Return JSON: [{{"point": [y, x], "label": "grasp_target"}}]
+  Coordinates are [y, x] on a 0-{scale} scale where [0, 0] is top-left and [{scale}, {scale}] is bottom-right.

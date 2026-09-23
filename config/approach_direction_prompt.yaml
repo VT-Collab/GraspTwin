@@ -1,0 +1,94 @@
+# ============================================================
+# Arrow-Approach Selection Prompt
+# ============================================================
+# A single photo is sent to the VLM. The photo shows the target
+# object overlaid with several differently-colored arrows, each an
+# approach direction for a two-finger parallel-jaw gripper. Drawn on
+# each arrow, TO SCALE, is that gripper as a colored FORK: two fingers
+# 8 cm apart (the max opening), already turned to the best-fitting
+# angle, so the picture is a direct feasibility test — the object either
+# fits between the fingers or is too wide.
+#
+# The model works in two steps: STEP 1 eliminates arrows whose 8 cm fork
+# cannot close around the object (too wide), STEP 2 picks, among the
+# survivors, the one that best serves the TASK (keeping any feature the
+# task still needs clear — e.g. a spout to pour from — unobstructed).
+#
+# The model reasons briefly then ends with a line 'FINAL: <color>' (or
+# 'FINAL: none' when a view is too cluttered / edge-on to judge);
+# VLM_Predict_RPY parses that last line, tallies the votes across the
+# 20 views pooling antiparallel arrows (same closing axis), and takes
+# the stronger color within the winning axis.
+#
+# NOTE: this stage now runs on robotics-ER 2 so the whole pipeline uses
+# one model (switched 2026-08-10). Earlier empirical testing (scene_10,
+# "pour the mustard") had found robotics-ER 1.5/1.6/2 (with and without
+# thinking) could not judge the relative width of the object vs the 8 cm
+# fork and defaulted to grasping the broad face (too wide), which is why
+# this stage previously ran gemini-2.5-flash (grounded the fork correctly
+# in every repeat; 2.5-pro 404s on this account). If broad-face grasps
+# reappear, that history is the first thing to revisit. See
+# _jaw_glyph_mesh in perception/rendering.py for the fork.
+#
+# The select template is task-generic on purpose: the task-specific
+# wording comes in through {task}/{grasp_part}/{approach_hint}, which the
+# earlier semantic stages compute per task. The few parenthetical
+# examples in the system prompt ("bottles, boxes"; "for pouring: the
+# cap/spout") were each A/B-tested: removing them collapses the vote back
+# to the broad-face arrows, so they stay.
+model: "gemini-robotics-er-2-preview"
+temperature: 0.3
+system_prompt: |
+  You choose how a two-finger parallel-jaw gripper should approach an object. The
+  two flat fingers close along one axis and open AT MOST 8 cm — a hard limit. You
+  see ONE image of the object with several colored arrows; each arrow is a
+  candidate direction the gripper comes in from, then closes its fingers.
+
+  Drawn on each arrow, TO SCALE, is that gripper as a colored FORK: two long
+  parallel fingers set exactly 8 cm apart (the full opening), reaching in alongside
+  the object like the real fingers before they close. The fork is already turned to
+  the BEST-FITTING angle for that approach. Read each fork LITERALLY and carefully —
+  this is the one place people get it backwards:
+
+    * FITS  →  the whole object passes BETWEEN the two fingers and you can see a
+               clear strip of empty space between the object and EACH finger. The
+               object is narrower than the 8 cm gap. The gripper can grasp it here.
+    * TOO WIDE → the object reaches the fingers or the fingers sink INTO / pass
+               THROUGH the object (no gap on one or both sides). The object is as
+               wide as, or wider than, 8 cm. The gripper CANNOT close around it —
+               IMPOSSIBLE.
+
+  Do not confuse these: fingers buried in the object are NOT a snug grip, they mean
+  the object is TOO WIDE; an air gap around the object is NOT a near-miss, it means
+  it FITS. Judge the gap, not "does it look held."
+
+  Decide in TWO STEPS:
+
+  STEP 1 — FEASIBILITY (hard filter, first). Classify every arrow FITS or TOO WIDE
+    from its fork. ELIMINATE every TOO WIDE arrow; never output it. Flat/elongated
+    objects (bottles, boxes) are far more than 8 cm across their broad face and long
+    axis, so any approach whose fingers would span the BROAD FACE or the LONG axis
+    is TOO WIDE. A grasp fits only across the object's SMALLEST (thinnest) dimension.
+
+  STEP 2 — TASK FIT (only among arrows that FIT). Pick the one best for the task:
+    keep whatever the task needs free (for pouring: the cap/spout) unobstructed and
+    let the after-grasp motion happen naturally (to pour, come in horizontally onto
+    the body, not down onto the cap). Prefer how a person would hold it.
+
+  READABILITY: if THIS image is too cluttered to tell the forks apart, or the
+  arrow you'd choose is pointing nearly at the camera so its fork is edge-on and you
+  cannot judge its gap, do not guess — answer 'FINAL: none'. A confident wrong guess
+  is worse than skipping this view.
+select_prompt_template: |
+  Task the robot must perform: {task}
+  Part of the object to grasp: {grasp_part}
+  Intended approach, chosen by an earlier planning step: {approach_hint}
+  The arrows drawn in this image use these colors: {colors}.
+  Do STEP 1 then STEP 2. In 2-4 short sentences: name every arrow you ELIMINATE as
+  TOO WIDE (its 8 cm fork cannot close around the object — object touches/penetrates
+  the fingers), then, among the ones that clearly FIT (object sits between the
+  fingers with air on both sides), which best serves the task while keeping whatever
+  the task still needs unobstructed. If you cannot judge this image, say so. Then on
+  the LAST line write exactly:
+  FINAL: <color>
+  using one color from the list above, or 'FINAL: none' if this view is unclear.
