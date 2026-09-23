@@ -1,7 +1,7 @@
 # Python 3.10. Versions are the ones the paper's experiments ran with.
 numpy==1.26.4
 scipy==1.15.3
-opencv-python
+opencv-python==4.11.0.86
 matplotlib==3.10.8
 pillow==11.3.0
 PyYAML==6.0.3
