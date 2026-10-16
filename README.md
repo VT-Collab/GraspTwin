@@ -8,6 +8,7 @@
 
 https://github.com/user-attachments/assets/e4b9ec84-ed8f-4ae3-ad44-b3e6f179338d
 
+Paper: https://arxiv.org/pdf/2609.30543
 
 Code accompanying our submission. A vision-language model (Gemini
 Robotics-ER) decides *what* to grasp and *how* (object, part, approach side);
